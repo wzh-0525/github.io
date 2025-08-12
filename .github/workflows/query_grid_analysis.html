@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>查询网格分析工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .toggle-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 14px;
+        }
+
+        .toggle-btn:hover {
+            background: #0056b3;
+        }
+
+        .toggle-btn.active {
+            background: #28a745;
+        }
+
+        .file-input {
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .file-input input[type="file"] {
+            margin: 10px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .grid-container {
+            padding: 20px;
+            overflow: auto;
+            max-height: 600px;
+        }
+
+        .grid-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            min-width: 800px;
+        }
+
+        .grid-table th,
+        .grid-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            position: relative;
+        }
+
+        .grid-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .grid-table .row-header {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            min-width: 120px;
+            text-align: left;
+            padding-left: 12px;
+        }
+
+        .grid-table .corner-cell {
+            background-color: #e9ecef;
+            position: sticky;
+            left: 0;
+            top: 0;
+            z-index: 15;
+            font-weight: bold;
+        }
+
+        .grid-cell {
+            min-width: 60px;
+            height: 40px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        .grid-cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 20;
+            border: 2px solid #007bff;
+        }
+
+        .legend {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border: 1px solid #ddd;
+        }
+
+        .stats {
+            padding: 20px;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            flex: 1;
+            min-width: 120px;
+            margin: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            max-width: 200px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .grid-table {
+                font-size: 10px;
+            }
+            
+            .grid-cell {
+                min-width: 40px;
+                height: 30px;
+            }
+            
+            .stats {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>查询网格分析工具</h1>
+            <p>领域与意图交叉分析热力图</p>
+        </div>
+
+        <div class="file-input">
+            <label for="fileInput">选择Excel文件：</label>
+            <input type="file" id="fileInput" accept=".xlsx,.xls" />
+            <button onclick="loadSampleData()" class="toggle-btn">加载示例数据</button>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>级别选择：</label>
+                <button id="levelToggle" class="toggle-btn active" onclick="toggleLevel()">一级</button>
+            </div>
+            <div class="control-group">
+                <button onclick="refreshGrid()" class="toggle-btn">刷新网格</button>
+            </div>
+            <div class="control-group">
+                <button onclick="exportData()" class="toggle-btn">导出数据</button>
+            </div>
+        </div>
+
+        <div id="gridContainer" class="grid-container">
+            <div class="loading">请选择Excel文件或加载示例数据</div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <span>颜色深度：</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #f8f9fa;"></div>
+                <span>0</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #e3f2fd;"></div>
+                <span>低</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #2196f3;"></div>
+                <span>中</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #0d47a1;"></div>
+                <span>高</span>
+            </div>
+        </div>
+
+        <div id="stats" class="stats" style="display: none;">
+            <div class="stat-item">
+                <div class="stat-value" id="totalQueries">0</div>
+                <div class="stat-label">总查询数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalDomains">0</div>
+                <div class="stat-label">领域数量</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalIntents">0</div>
+                <div class="stat-label">意图数量</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="maxCount">0</div>
+                <div class="stat-label">最大计数</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        let rawData = [];
+        let currentLevel = 'first'; // 'first' or 'second'
+        let currentMatrix = null;
+
+        // 文件上传处理
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        
+                        rawData = jsonData;
+                        console.log('加载的数据:', rawData.slice(0, 5));
+                        console.log('数据列名:', Object.keys(rawData[0] || {}));
+                        generateGrid();
+                    } catch (error) {
+                        showError('读取Excel文件失败: ' + error.message);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // 加载示例数据
+        function loadSampleData() {
+            // 创建更丰富的示例数据
+            const firstDomains = ['技术', '生活', '娱乐', '教育', '商业'];
+            const secondDomains = {
+                '技术': ['人工智能', '机器学习', '数据科学', '云计算', '区块链'],
+                '生活': ['健康', '美食', '旅游', '购物', '家居'],
+                '娱乐': ['电影', '音乐', '游戏', '体育', '阅读'],
+                '教育': ['语言学习', '职业培训', '学术研究', '在线课程', '考试'],
+                '商业': ['电商', '金融', '营销', '管理', '创业']
+            };
+            
+            const firstIntents = ['查询', '学习', '咨询', '推荐', '购买'];
+            const secondIntents = {
+                '查询': ['定义查询', '应用查询', '比较查询', '价格查询', '位置查询'],
+                '学习': ['教程学习', '技能学习', '理论学习', '实践学习', '考试学习'],
+                '咨询': ['医疗咨询', '法律咨询', '技术咨询', '投资咨询', '生活咨询'],
+                '推荐': ['内容推荐', '产品推荐', '服务推荐', '地点推荐', '人员推荐'],
+                '购买': ['在线购买', '比价购买', '团购', '预订', '租赁']
+            };
+
+            rawData = [];
+            
+            // 生成示例数据，确保有合理的分布
+            for (let i = 0; i < 2000; i++) {
+                const firstDomain = firstDomains[Math.floor(Math.random() * firstDomains.length)];
+                const secondDomain = secondDomains[firstDomain][Math.floor(Math.random() * secondDomains[firstDomain].length)];
+                const firstIntent = firstIntents[Math.floor(Math.random() * firstIntents.length)];
+                const secondIntent = secondIntents[firstIntent][Math.floor(Math.random() * secondIntents[firstIntent].length)];
+                
+                rawData.push({
+                    First_domain: firstDomain,
+                    Second_Domain: secondDomain,
+                    First_Intent: firstIntent,
+                    Second_Intent: secondIntent,
+                    query: `示例查询_${i + 1}`
+                });
+            }
+            
+            console.log('加载示例数据:', rawData.length, '条记录');
+            console.log('示例数据结构:', rawData[0]);
+            generateGrid();
+        }
+
+        // 切换级别（同时切换领域和意图级别）
+        function toggleLevel() {
+            currentLevel = currentLevel === 'first' ? 'second' : 'first';
+            const btn = document.getElementById('levelToggle');
+            btn.textContent = currentLevel === 'first' ? '一级' : '二级';
+            generateGrid();
+        }
+
+        // 刷新网格
+        function refreshGrid() {
+            if (rawData.length > 0) {
+                generateGrid();
+            }
+        }
+
+        // 导出数据
+        function exportData() {
+            if (!currentMatrix) {
+                alert('没有数据可导出');
+                return;
+            }
+            
+            const csvContent = matrixToCSV(currentMatrix);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `query_grid_${currentLevel}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 矩阵转CSV
+        function matrixToCSV(matrix) {
+            const domains = Object.keys(matrix);
+            const intents = [...new Set(domains.flatMap(d => Object.keys(matrix[d])))].sort();
+            
+            let csv = '领域\\意图,' + intents.join(',') + '\n';
+            domains.forEach(domain => {
+                let row = domain;
+                intents.forEach(intent => {
+                    row += ',' + (matrix[domain][intent] || 0);
+                });
+                csv += row + '\n';
+            });
+            
+            return csv;
+        }
+
+        // 智能匹配列名
+        function findMatchingColumns(data) {
+            if (!data || data.length === 0) return null;
+            
+            const columns = Object.keys(data[0]);
+            console.log('可用列名:', columns);
+            
+            // 定义可能的列名模式
+            const domainPatterns = {
+                first: ['first_domain', 'firstdomain', 'domain1', 'domain_1', 'primary_domain', 'primarydomain', '一级领域', '领域1', '主领域'],
+                second: ['second_domain', 'seconddomain', 'domain2', 'domain_2', 'sub_domain', 'subdomain', '二级领域', '领域2', '子领域']
+            };
+            
+            const intentPatterns = {
+                first: ['first_intent', 'firstintent', 'intent1', 'intent_1', 'primary_intent', 'primaryintent', '一级意图', '意图1', '主意图'],
+                second: ['second_intent', 'secondintent', 'intent2', 'intent_2', 'sub_intent', 'subintent', '二级意图', '意图2', '子意图']
+            };
+            
+            // 查找匹配的列名
+            const findMatch = (patterns, columns) => {
+                // 精确匹配
+                for (const col of columns) {
+                    const lowerCol = col.toLowerCase();
+                    if (patterns.includes(lowerCol)) {
+                        return col;
+                    }
+                }
+                
+                // 模糊匹配
+                for (const col of columns) {
+                    const lowerCol = col.toLowerCase();
+                    for (const pattern of patterns) {
+                        if (lowerCol.includes(pattern) || pattern.includes(lowerCol)) {
+                            return col;
+                        }
+                    }
+                }
+                
+                return null;
+            };
+            
+            // 查找匹配的列
+            const result = {
+                firstDomain: findMatch(domainPatterns.first, columns),
+                secondDomain: findMatch(domainPatterns.second, columns),
+                firstIntent: findMatch(intentPatterns.first, columns),
+                secondIntent: findMatch(intentPatterns.second, columns),
+                query: columns.find(col => col.toLowerCase().includes('query') || col.toLowerCase().includes('查询'))
+            };
+            
+            console.log('匹配的列名:', result);
+            return result;
+        }
+
+        // 生成网格
+        function generateGrid() {
+            if (rawData.length === 0) {
+                document.getElementById('gridContainer').innerHTML = '<div class="loading">没有数据可显示</div>';
+                return;
+            }
+
+            try {
+                // 智能匹配列名
+                const columnMapping = findMatchingColumns(rawData);
+                if (!columnMapping) {
+                    showError('无法识别数据列名');
+                    return;
+                }
+                
+                // 确定使用的列名（同步领域和意图级别）
+                const domainCol = currentLevel === 'first' ? 
+                    (columnMapping.firstDomain || 'First_domain') : 
+                    (columnMapping.secondDomain || 'Second_Domain');
+                    
+                const intentCol = currentLevel === 'first' ? 
+                    (columnMapping.firstIntent || 'First_Intent') : 
+                    (columnMapping.secondIntent || 'Second_Intent');
+
+                // 检查列是否存在
+                if (!rawData[0].hasOwnProperty(domainCol) || !rawData[0].hasOwnProperty(intentCol)) {
+                    showError(`数据中缺少必要的列: ${domainCol} 或 ${intentCol}。请确保Excel文件包含领域和意图列。`);
+                    return;
+                }
+
+                // 获取唯一的领域和意图，并按查询数量排序
+                const domainCounts = {};
+                const intentCounts = {};
+                
+                rawData.forEach(row => {
+                    const domain = row[domainCol];
+                    const intent = row[intentCol];
+                    if (domain) {
+                        domainCounts[domain] = (domainCounts[domain] || 0) + 1;
+                    }
+                    if (intent) {
+                        intentCounts[intent] = (intentCounts[intent] || 0) + 1;
+                    }
+                });
+                
+                // 按数量降序排序
+                const domains = Object.keys(domainCounts).sort((a, b) => domainCounts[b] - domainCounts[a]);
+                const intents = Object.keys(intentCounts).sort((a, b) => intentCounts[b] - intentCounts[a]);
+
+                console.log('领域:', domains);
+                console.log('意图:', intents);
+
+                // 统计每个组合的查询数量
+                const countMatrix = {};
+                domains.forEach(domain => {
+                    countMatrix[domain] = {};
+                    intents.forEach(intent => {
+                        countMatrix[domain][intent] = 0;
+                    });
+                });
+
+                rawData.forEach(row => {
+                    const domain = row[domainCol];
+                    const intent = row[intentCol];
+                    if (domain && intent && countMatrix[domain] && countMatrix[domain].hasOwnProperty(intent)) {
+                        countMatrix[domain][intent]++;
+                    }
+                });
+
+                currentMatrix = countMatrix;
+
+                // 找到最大计数用于颜色映射
+                const allCounts = domains.flatMap(d => intents.map(i => countMatrix[d][i]));
+                const maxCount = Math.max(...allCounts, 1);
+
+                // 生成HTML表格
+                let html = '<table class="grid-table">';
+                
+                // 表头
+                html += '<tr>';
+                html += '<th class="corner-cell">领域 \\ 意图</th>';
+                intents.forEach(intent => {
+                    html += `<th title="${intent}">${truncateText(intent, 10)}</th>`;
+                });
+                html += '</tr>';
+
+                // 数据行
+                domains.forEach(domain => {
+                    html += '<tr>';
+                    html += `<td class="row-header" title="${domain}">${truncateText(domain, 15)}</td>`;
+                    intents.forEach(intent => {
+                        const count = countMatrix[domain][intent];
+                        const intensity = count / maxCount;
+                        const backgroundColor = getBlueColor(intensity);
+                        const textColor = intensity > 0.5 ? 'white' : 'black';
+                        
+                        html += `<td class="grid-cell" 
+                                    style="background-color: ${backgroundColor}; color: ${textColor};"
+                                    title="领域: ${domain}&#10;意图: ${intent}&#10;查询数: ${count}"
+                                    onclick="showDetails('${domain}', '${intent}', ${count})"
+                                    onmouseover="showTooltip(event, '${domain}', '${intent}', ${count})"
+                                    onmouseout="hideTooltip()">
+                                    ${count}
+                                </td>`;
+                    });
+                    html += '</tr>';
+                });
+
+                html += '</table>';
+
+                document.getElementById('gridContainer').innerHTML = html;
+
+                // 更新统计信息
+                updateStats(rawData.length, domains.length, intents.length, maxCount);
+
+            } catch (error) {
+                showError('生成网格时出错: ' + error.message);
+                console.error('详细错误:', error);
+            }
+        }
+
+        // 截断文本
+        function truncateText(text, maxLength) {
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
+        // 生成蓝色渐变
+        function getBlueColor(intensity) {
+            if (intensity === 0) return '#f8f9fa';
+            
+            // 蓝色渐变：从浅蓝到深蓝
+            const colors = [
+                [248, 249, 250], // #f8f9fa - 0
+                [227, 242, 253], // #e3f2fd - 0.1
+                [187, 222, 251], // #bbdefb - 0.2
+                [144, 202, 249], // #90caf9 - 0.3
+                [100, 181, 246], // #64b5f6 - 0.4
+                [66, 165, 245],  // #42a5f5 - 0.5
+                [33, 150, 243],  // #2196f3 - 0.6
+                [30, 136, 229],  // #1e88e5 - 0.7
+                [25, 118, 210],  // #1976d2 - 0.8
+                [21, 101, 192],  // #1565c0 - 0.9
+                [13, 71, 161]    // #0d47a1 - 1.0
+            ];
+            
+            const index = Math.min(Math.floor(intensity * (colors.length - 1)), colors.length - 1);
+            const color = colors[index];
+            
+            return `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+        }
+
+        // 显示详细信息
+        function showDetails(domain, intent, count) {
+            // 获取当前使用的列名映射
+            const columnMapping = findMatchingColumns(rawData);
+            if (!columnMapping) {
+                alert(`领域: ${domain}\n意图: ${intent}\n查询数量: ${count}\n\n无法识别查询列`);
+                return;
+            }
+            
+            // 确定使用的列名（同步领域和意图级别）
+            const domainCol = currentLevel === 'first' ? 
+                (columnMapping.firstDomain || 'First_domain') : 
+                (columnMapping.secondDomain || 'Second_Domain');
+                
+            const intentCol = currentLevel === 'first' ? 
+                (columnMapping.firstIntent || 'First_Intent') : 
+                (columnMapping.secondIntent || 'Second_Intent');
+            
+            const queryCol = columnMapping.query || 'query';
+            
+            // 过滤匹配的行
+            const matchingRows = rawData.filter(row => 
+                row[domainCol] === domain && row[intentCol] === intent
+            );
+            
+            // 提取查询内容
+            let queries = [];
+            if (matchingRows.length > 0) {
+                // 尝试从所有可能的查询列中获取数据
+                const possibleQueryCols = ['query', 'Query', '查询', 'text', 'Text', '文本', 'content', 'Content', '内容'];
+                
+                for (const row of matchingRows) {
+                    let query = null;
+                    
+                    // 首先尝试使用匹配到的查询列
+                    if (queryCol && row[queryCol]) {
+                        query = row[queryCol];
+                    } else {
+                        // 尝试其他可能的查询列
+                        for (const col of possibleQueryCols) {
+                            if (row[col]) {
+                                query = row[col];
+                                break;
+                            }
+                        }
+                        
+                        // 如果还是没找到，使用任意非空值作为查询
+                        if (!query) {
+                            for (const key in row) {
+                                if (key !== domainCol && key !== intentCol && row[key]) {
+                                    query = `${key}: ${row[key]}`;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (query) {
+                        queries.push(query);
+                    }
+                }
+            }
+            
+            // 如果没有找到查询，显示提示信息
+            if (queries.length === 0) {
+                queries = [`示例查询_${domain}_${intent}`];
+            }
+            
+            const uniqueQueries = [...new Set(queries)];
+            
+            const message = `领域: ${domain}\n意图: ${intent}\n查询数量: ${count}\n\n示例查询:\n${uniqueQueries.slice(0, 10).join('\n')}`;
+            
+            if (uniqueQueries.length > 10) {
+                alert(message + '\n\n...(还有更多查询)');
+            } else {
+                alert(message);
+            }
+        }
+
+        // 显示工具提示
+        function showTooltip(event, domain, intent, count) {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip';
+            tooltip.innerHTML = `<strong>${domain}</strong><br/>${intent}<br/>查询数: ${count}`;
+            tooltip.style.left = (event.pageX + 10) + 'px';
+            tooltip.style.top = (event.pageY - 10) + 'px';
+            document.body.appendChild(tooltip);
+        }
+
+        // 隐藏工具提示
+        function hideTooltip() {
+            const tooltips = document.querySelectorAll('.tooltip');
+            tooltips.forEach(tooltip => tooltip.remove());
+        }
+
+        // 更新统计信息
+        function updateStats(totalQueries, totalDomains, totalIntents, maxCount) {
+            document.getElementById('totalQueries').textContent = totalQueries;
+            document.getElementById('totalDomains').textContent = totalDomains;
+            document.getElementById('totalIntents').textContent = totalIntents;
+            document.getElementById('maxCount').textContent = maxCount;
+            document.getElementById('stats').style.display = 'flex';
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            document.getElementById('gridContainer').innerHTML = 
+                `<div class="error">错误: ${message}</div>`;
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('查询网格分析工具已加载');
+        });
+    </script>
+</body>
+</html>
